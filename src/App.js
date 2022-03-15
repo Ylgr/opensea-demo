@@ -23,13 +23,13 @@ import LootBoxRandomnessAbi from './abi/LootBoxRandomness.json';
 
 function App() {
   // BSC
-  const creatureAddress = '0xdB5f83e96F6Aa3E57Cde86A3B371BcF418090dDF';
-  const creatureFactoryAddress = '0xf6B7Eeb1DD88B04FA6fC454A37c3af9fF2a00A55';
-  const creatureLootBoxAddress = '0x24343ec105DC34Aa1fD7b18a576b81957427644C';
-  const creatureAccessoryAddress = '0x67ffE40186d25Def170C481966a2D7686ca580dA';
-  const lootBoxRandomness = '0x75675312c824238eec94dF21FeF2c160aD542Ec9';
-  const creatureAccessoryLootBox = '0x524daCEfE9a5BED1e94A13A5912C330e8aDd516A';
-  const creatureAccessoryFactoryAddress = '0xf42Ff589FFA2F50922b686C8bfCDF564dDC91FF3';
+  const creatureAddress = '0x7b66280a97D4C706E896C534aBEd8d7Bc3D15492';
+  const creatureFactoryAddress = '0x3235197a44c4C6B8747b3103e2B9B11719E869A5';
+  const creatureLootBoxAddress = '0x3B9dcf4D8Ef37ECe348EF80AD70f1c073aC4Ab60';
+  const creatureAccessoryAddress = '0x3B9dcf4D8Ef37ECe348EF80AD70f1c073aC4Ab60';
+  const lootBoxRandomness = '0x16ab070Ca481C1ebC180dB92c2Ae956BAA1bde6b';
+  const creatureAccessoryLootBox = '0x91324eA105eA26181d3Bb54AE12DC28616fa17e8';
+  const creatureAccessoryFactoryAddress = '0x122FE47593fe359D52AeBa9c5ACE05CBe2d84c67';
 
   // // Rinkeby
   // const creatureAddress = '0x808Fbc3CAB0140f8128c0376A16E05d7F8Cbc98E';
@@ -166,7 +166,16 @@ function App() {
             <h2>Creature Accessory (ERC 1155)</h2>
           </Col>
         </Row>
-
+        <Row>
+          <Col>
+            <h2>Creature Accessory Lootbox</h2>
+          </Col>
+        </Row>
+        <Row>
+          <Col>
+            <h2>Loot Box Randomness</h2>
+          </Col>
+        </Row>
         <Row>
           <Col>
             <h2>Creature Accessory Factory</h2>
