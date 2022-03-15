@@ -27,17 +27,9 @@ function App() {
   const creatureFactoryAddress = '0x3235197a44c4C6B8747b3103e2B9B11719E869A5';
   const creatureLootBoxAddress = '0x3B9dcf4D8Ef37ECe348EF80AD70f1c073aC4Ab60';
   const creatureAccessoryAddress = '0x3B9dcf4D8Ef37ECe348EF80AD70f1c073aC4Ab60';
-  const lootBoxRandomness = '0x16ab070Ca481C1ebC180dB92c2Ae956BAA1bde6b';
-  const creatureAccessoryLootBox = '0x91324eA105eA26181d3Bb54AE12DC28616fa17e8';
+  const lootBoxRandomnessAddress = '0x16ab070Ca481C1ebC180dB92c2Ae956BAA1bde6b';
+  const creatureAccessoryLootBoxAddress = '0x91324eA105eA26181d3Bb54AE12DC28616fa17e8';
   const creatureAccessoryFactoryAddress = '0x122FE47593fe359D52AeBa9c5ACE05CBe2d84c67';
-
-  // // Rinkeby
-  // const creatureAddress = '0x808Fbc3CAB0140f8128c0376A16E05d7F8Cbc98E';
-  // const creatureFactoryAddress = '0x53964BBB3B01e732844d0B595560a72B3018c143';
-  // const creatureAccessoryAddress = '0xFa84b3A49F228F45C320A0B9B0Fe05BcC6076bF8';
-  // const lootBoxRandomness = '0x8E9244Ff3aA592B466630907d3eFe97fB09cfD81';
-  // const creatureAccessoryLootBox = '0x3E8928e8DF6785969aFea283693F34A3505BD1F7';
-  // const creatureAccessoryFactoryAddress = '0xe0F69662772C040551AdB7a81f6f0A8982FCC8e1';
 
   const [web3, setWeb3] = useState(null)
   const [currentAddress, setCurrentAddress] = useState(null)
@@ -46,7 +38,7 @@ function App() {
     creature: null,
     creatureFactory: null,
     creatureLootBox: null,
-    creatureAccessoryAddress: null,
+    creatureAccessory: null,
     lootBoxRandomness: null,
     creatureAccessoryLootBox: null,
     creatureAccessoryFactory: null,
@@ -54,10 +46,15 @@ function App() {
 
   const [creature, setCreature] = useState({})
   const [creatureFactory, setCreatureFactory] = useState({})
+  const [creatureAccessory, setCreatureAccessory] = useState({})
+  const [creatureAccessoryLootBox, setCreatureAccessoryLootBox] = useState({})
+  const [creatureAccessoryFactory, setCreatureAccessoryFactory] = useState({})
+
+  const itemAccessoryIds = [0,1,2,3,4,5];
+  const lootBoxAccessoryIds = [0,1,2];
+
   const connectWallet = async () => {
-    console.log('adsad')
     if (window.ethereum) {
-      console.log('adsad2')
 
       const ethereum = window.ethereum;
       await ethereum.request({ method: "eth_requestAccounts" });
@@ -69,9 +66,9 @@ function App() {
         creature: new web3.eth.Contract(CreatureAbi,creatureAddress),
         creatureFactory: new web3.eth.Contract(CreatureFactoryAbi,creatureFactoryAddress),
         creatureLootBox: new web3.eth.Contract(CreatureLootBoxAbi,creatureLootBoxAddress),
-        creatureAccessoryAddress: new web3.eth.Contract(CreatureAccessoryAbi,creatureAccessoryAddress),
-        lootBoxRandomness: new web3.eth.Contract(LootBoxRandomnessAbi,lootBoxRandomness),
-        creatureAccessoryLootBox: new web3.eth.Contract(CreatureAccessoryLootBoxAbi,creatureAccessoryLootBox),
+        creatureAccessory: new web3.eth.Contract(CreatureAccessoryAbi,creatureAccessoryAddress),
+        lootBoxRandomness: new web3.eth.Contract(LootBoxRandomnessAbi,lootBoxRandomnessAddress),
+        creatureAccessoryLootBox: new web3.eth.Contract(CreatureAccessoryLootBoxAbi,creatureAccessoryLootBoxAddress),
         creatureAccessoryFactory: new web3.eth.Contract(CreatureAccessoryFactoryAbi,creatureAccessoryFactoryAddress),
       })
     }
@@ -79,6 +76,8 @@ function App() {
 
   useEffect(() => {
     async function setInfo() {
+      if(!currentAddress) connectWallet()
+
       if(contract.creature) {
         const totalSupply = await contract.creature.methods.totalSupply().call();
         const tokenURI = [];
@@ -102,15 +101,38 @@ function App() {
           owner: await contract.creatureFactory.methods.owner().call(),
         })
       }
-      if(contract.lootBoxRandomness) {
-        setCreatureFactory({
-          name: await contract.creature.methods.name().call(),
-          symbol: await contract.creature.methods.symbol().call(),
-          owner: await contract.creature.methods.owner().call(),
+      if(contract.creatureAccessory) {
+        setCreatureAccessory({
+          name: await contract.creatureAccessory.methods.name().call(),
+          symbol: await contract.creatureAccessory.methods.symbol().call(),
+          owner: await contract.creatureAccessory.methods.owner().call(),
+        })
+      }
+      if(contract.creatureAccessoryLootBox) {
+
+        const items = await Promise.all(lootBoxAccessoryIds.map(async (id) => ({
+          id,
+          balance: await contract.creatureAccessoryLootBox.methods.balanceOf(currentAddress, id).call(),
+          creator: await contract.creatureAccessoryLootBox.methods.creators(id).call(),
+          totalSupply: await contract.creatureAccessoryLootBox.methods.totalSupply(id).call(),
+        })))
+        console.log('items: ', items)
+        setCreatureAccessoryLootBox({
+          name: await contract.creatureAccessoryLootBox.methods.name().call(),
+          symbol: await contract.creatureAccessoryLootBox.methods.symbol().call(),
+          owner: await contract.creatureAccessoryLootBox.methods.owner().call(),
+          items
+        })
+      }
+      if(contract.creatureAccessoryFactory) {
+        setCreatureAccessoryFactory({
+          name: await contract.creatureAccessoryFactory.methods.name().call(),
+          symbol: await contract.creatureAccessoryFactory.methods.symbol().call(),
+          owner: await contract.creatureAccessoryFactory.methods.owner().call(),
         })
       }
     }
-    setInfo();
+    setInfo().then(() => console.log('update success!'));
   }, [contract])
 
   const mintTo = async (option, address) => {
@@ -118,19 +140,19 @@ function App() {
     console.log('mint receipt: ', receipt);
   }
 
-  const mint1155To = async (option, address) => {
-    const receipt = await contract.creatureAccessoryFactory.methods.mint(option,address, 10, "0x0").send({from: currentAddress});
+  const mint1155To = async (option, address, amount = 3) => {
+    const receipt = await contract.creatureAccessoryFactory.methods.mint(option,address, amount, "0x0").send({from: currentAddress});
     console.log('mint receipt: ', receipt);
+  }
+
+  const unpack1155LootBox = async (id) => {
+    const receipt = await contract.creatureAccessoryLootBox.methods.unpack(id,currentAddress, 3).send({from: currentAddress});
+    console.log('unpack receipt: ', receipt);
   }
 
   return (
     <div className="App">
       <Container fluid className="distanced" style={{ maxWidth: "1440px" }}>
-        <Row>
-          <Col>
-            <h1>BIC admin page</h1>
-          </Col>
-        </Row>
         {currentAddress ? (
             <h3>Current address: {currentAddress}</h3>
         ) : (
@@ -144,7 +166,7 @@ function App() {
         )}
         <Row>
           <Col>
-            <h1>Open Sea</h1>
+            <h1 style={{"color":"powderblue"}}>Open Sea</h1>
           </Col>
         </Row>
         <Row>
@@ -163,9 +185,26 @@ function App() {
         <Row><Button onClick={() => mintTo(2, currentAddress)}>Mint loot box</Button></Row>
         <Row>
           <Col>
-            <h2>Creature Accessory (ERC 1155)</h2>
+            <h1>ERC 1155</h1>
           </Col>
         </Row>
+        <Row>
+          <Col>
+            <h2>Creature Accessory</h2>
+          </Col>
+        </Row>
+        <Row>
+          <Col>
+            <p>Name: {creatureAccessory.name}</p>
+          </Col>
+          <Col>
+            <p>Symbol: {creatureAccessory.symbol}</p>
+          </Col>
+          <Col>
+            <p>Owner: {creatureAccessory.owner}</p>
+          </Col>
+        </Row>
+
         <Row>
           <Col>
             <h2>Creature Accessory Lootbox</h2>
@@ -173,17 +212,52 @@ function App() {
         </Row>
         <Row>
           <Col>
-            <h2>Loot Box Randomness</h2>
+            <p>Name: {creatureAccessoryLootBox.name}</p>
           </Col>
+          <Col>
+            <p>Symbol: {creatureAccessoryLootBox.symbol}</p>
+          </Col>
+          <Col>
+            <p>Owner: {creatureAccessoryLootBox.owner}</p>
+          </Col>
+        </Row>
+        <Row>
+          {creatureAccessoryLootBox.items && creatureAccessoryLootBox.items.map((e, index) => (<Col key={'lootBoxAccessory' + index}><Card>
+            <Card.Body>
+              <Card.Title>Id: {e.id}</Card.Title>
+              <Card.Text>
+                Balance: {e.balance} - Creator: {e.creator} - Total Supply: {e.totalSupply}
+              </Card.Text>
+              <Button variant="primary" onClick={() => unpack1155LootBox(e.id)}>Unpack 3</Button>
+            </Card.Body>
+          </Card></Col>))}
         </Row>
         <Row>
           <Col>
             <h2>Creature Accessory Factory</h2>
           </Col>
         </Row>
-        <Row><Button onClick={() => mint1155To(0, currentAddress)}>Mint single</Button></Row>
-        <Row><Button onClick={() => mint1155To(1, currentAddress)}>Mint 5</Button></Row>
-        <Row><Button onClick={() => mint1155To(2, currentAddress)}>Mint loot box</Button></Row>
+
+        <Row>
+          <Col>
+            <p>Name: {creatureAccessoryFactory.name}</p>
+          </Col>
+          <Col>
+            <p>Symbol: {creatureAccessoryFactory.symbol}</p>
+          </Col>
+          <Col>
+            <p>Owner: {creatureAccessoryFactory.owner}</p>
+          </Col>
+        </Row>
+        <Row><Button onClick={() => mint1155To(0, currentAddress)}>Mint 3 common item</Button></Row>
+        <Row><Button onClick={() => mint1155To(1, currentAddress)}>Mint 3 rare item</Button></Row>
+        <Row><Button onClick={() => mint1155To(2, currentAddress)}>Mint 3 epic item</Button></Row>
+        <Row><Button onClick={() => mint1155To(3, currentAddress)}>Mint 3 legendary item</Button></Row>
+        <Row><Button onClick={() => mint1155To(4, currentAddress)}>Mint 3 divine item</Button></Row>
+        <Row><Button onClick={() => mint1155To(5, currentAddress)}>Mint 3 hidden item</Button></Row>
+        <Row><Button onClick={() => mint1155To(6, currentAddress)}>Mint 3 basic loot box</Button></Row>
+        <Row><Button onClick={() => mint1155To(7, currentAddress)}>Mint 3 premium loot box</Button></Row>
+        <Row><Button onClick={() => mint1155To(8, currentAddress)}>Mint 3 gold loot box</Button></Row>
         <Row>
           <Col>
             <h1>Wyvern Exchange</h1>
