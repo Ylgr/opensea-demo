@@ -1,0 +1,23 @@
+{
+  "files": {
+    "main.css": "/opensea-demo/static/css/main.a617e044.chunk.css",
+    "main.js": "/opensea-demo/static/js/main.1e291fd2.chunk.js",
+    "main.js.map": "/opensea-demo/static/js/main.1e291fd2.chunk.js.map",
+    "runtime-main.js": "/opensea-demo/static/js/runtime-main.6d0c89a0.js",
+    "runtime-main.js.map": "/opensea-demo/static/js/runtime-main.6d0c89a0.js.map",
+    "static/js/2.43df4f19.chunk.js": "/opensea-demo/static/js/2.43df4f19.chunk.js",
+    "static/js/2.43df4f19.chunk.js.map": "/opensea-demo/static/js/2.43df4f19.chunk.js.map",
+    "static/js/3.c9c97502.chunk.js": "/opensea-demo/static/js/3.c9c97502.chunk.js",
+    "static/js/3.c9c97502.chunk.js.map": "/opensea-demo/static/js/3.c9c97502.chunk.js.map",
+    "index.html": "/opensea-demo/index.html",
+    "static/css/main.a617e044.chunk.css.map": "/opensea-demo/static/css/main.a617e044.chunk.css.map",
+    "static/js/2.43df4f19.chunk.js.LICENSE.txt": "/opensea-demo/static/js/2.43df4f19.chunk.js.LICENSE.txt",
+    "static/media/logo.6ce24c58.svg": "/opensea-demo/static/media/logo.6ce24c58.svg"
+  },
+  "entrypoints": [
+    "static/js/runtime-main.6d0c89a0.js",
+    "static/js/2.43df4f19.chunk.js",
+    "static/css/main.a617e044.chunk.css",
+    "static/js/main.1e291fd2.chunk.js"
+  ]
+}
