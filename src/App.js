@@ -25,7 +25,7 @@ function App() {
   // BSC
   const creatureAddress = '0x7b66280a97D4C706E896C534aBEd8d7Bc3D15492';
   const creatureFactoryAddress = '0x3235197a44c4C6B8747b3103e2B9B11719E869A5';
-  const creatureLootBoxAddress = '0x3B9dcf4D8Ef37ECe348EF80AD70f1c073aC4Ab60';
+  const creatureLootBoxAddress = '0xD9Ff70e4282AA3Fa0bFA57fBD3334d7e750FAfc2';
   const creatureAccessoryAddress = '0x3B9dcf4D8Ef37ECe348EF80AD70f1c073aC4Ab60';
   const lootBoxRandomnessAddress = '0x16ab070Ca481C1ebC180dB92c2Ae956BAA1bde6b';
   const creatureAccessoryLootBoxAddress = '0x91324eA105eA26181d3Bb54AE12DC28616fa17e8';
@@ -33,6 +33,7 @@ function App() {
 
   const [web3, setWeb3] = useState(null)
   const [currentAddress, setCurrentAddress] = useState(null)
+  const [listLootBox, setListLootBox] = useState([])
 
   const [contract, setContract] = useState({
     creature: null,
@@ -151,6 +152,31 @@ function App() {
     console.log('mint receipt: ', receipt);
   }
 
+  const loadListLootBox = async () => {
+    if(contract.creatureLootBox) {
+      const totalSupply = await contract.creatureLootBox.methods.totalSupply().call();
+      const tokenIDs = [];
+      for(let i = 1; i <= Number(totalSupply); i++) {
+        try {
+          let checkOwner = await contract.creatureLootBox.methods.ownerOf(i).call();
+          console.log(i, checkOwner);
+          if (checkOwner === currentAddress) {
+            tokenIDs.push(i)
+          }
+        } catch (e) {
+          console.log('error = ', e);
+        }
+      }
+      setListLootBox(tokenIDs);
+      console.log('loadListLootBox: ', tokenIDs);
+    }
+  }
+
+  const unpack = async (tokenID) => {
+    const receipt = await contract.creatureLootBox.methods.unpack(tokenID).send({from: currentAddress});
+    console.log('unpack receipt: ', receipt);
+  }
+
   const mint1155To = async (option, address, amount = 3) => {
     const receipt = await contract.creatureAccessoryFactory.methods.mint(option,address, amount, "0x0").send({from: currentAddress});
     console.log('mint receipt: ', receipt);
@@ -203,6 +229,9 @@ function App() {
         <Row><Button onClick={() => mintTo(0, currentAddress)}>Mint single</Button></Row>
         <Row><Button onClick={() => mintTo(1, currentAddress)}>Mint 5</Button></Row>
         <Row><Button onClick={() => mintTo(2, currentAddress)}>Mint loot box</Button></Row>
+        <Row><Button onClick={() => loadListLootBox()}>Load loot box</Button></Row>
+        <p>List loot box: {listLootBox}</p>
+        <Row><Button onClick={() => unpack(listLootBox[0])}>Unpack loot box</Button></Row>
         <Row>
           <Col>
             <h1>ERC 1155</h1>
