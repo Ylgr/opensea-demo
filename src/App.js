@@ -55,6 +55,7 @@ function App() {
 
   const itemAccessoryIds = [0,1,2,3,4,5];
   const lootBoxAccessoryIds = [0,1,2];
+  const bscUrl = 'https://testnet.bscscan.com/address/';
 
   const connectWallet = async () => {
     if (window.ethereum) {
@@ -190,11 +191,11 @@ function App() {
   }
 
 
-  const approveForFactory = async () => {
-    const receipt = await contract.creatureAccessory.methods.setApprovalForAll(creatureAccessoryFactoryAddress, true).send({from: currentAddress});
-    console.log('receipt: ', receipt);
-    setRefresh(3)
-  }
+  // const approveForFactory = async () => {
+  //   const receipt = await contract.creatureAccessory.methods.setApprovalForAll(creatureAccessoryFactoryAddress, true).send({from: currentAddress});
+  //   console.log('receipt: ', receipt);
+  //   setRefresh(3)
+  // }
 
   return (
     <div className="App">
@@ -218,18 +219,21 @@ function App() {
         <Row>
           <Col>
             <h2>Creature (ERC 721)</h2>
+            <a href={bscUrl + creatureAddress}>{creatureAddress}</a>
           </Col>
         </Row>
 
         <Row>
           <Col>
             <h2>Creature Factory</h2>
+            <a href={bscUrl + creatureFactoryAddress}>{creatureFactoryAddress}</a>
           </Col>
         </Row>
         <Row><Button onClick={() => mintTo(0, currentAddress)}>Mint single</Button></Row>
         <Row><Button onClick={() => mintTo(1, currentAddress)}>Mint 5</Button></Row>
         <Row><Button onClick={() => mintTo(2, currentAddress)}>Mint loot box</Button></Row>
         <Row><Button onClick={() => loadListLootBox()}>Load loot box</Button></Row>
+        <a href={bscUrl + creatureLootBoxAddress}>{creatureLootBoxAddress}</a>
         <p>List loot box: {listLootBox}</p>
         <Row><Button onClick={() => unpack(listLootBox[0])}>Unpack loot box</Button></Row>
         <Row>
@@ -240,6 +244,7 @@ function App() {
         <Row>
           <Col>
             <h2>Creature Accessory</h2>
+            <a href={bscUrl + creatureAccessoryAddress}>{creatureAccessoryAddress}</a>
           </Col>
         </Row>
         <Row>
@@ -251,12 +256,6 @@ function App() {
           </Col>
           <Col>
             <p>Owner: {creatureAccessory.owner}</p>
-          </Col>
-          <Col>
-            <p>Is Approve for factory: {creatureAccessory.isApprovedForFactory}</p>
-          </Col>
-          <Col>
-            <Button onClick={()=> approveForFactory()} disabled={creatureAccessory.isApprovedForFactory}>Approve for factory</Button>
           </Col>
         </Row>
         <Row>
@@ -272,6 +271,7 @@ function App() {
         <Row>
           <Col>
             <h2>Creature Accessory Lootbox</h2>
+            <a href={bscUrl + creatureAccessoryLootBoxAddress}>{creatureAccessoryLootBoxAddress}</a>
           </Col>
         </Row>
         <Row>
@@ -299,6 +299,7 @@ function App() {
         <Row>
           <Col>
             <h2>Creature Accessory Factory</h2>
+            <a href={bscUrl + creatureAccessoryFactoryAddress}>{creatureAccessoryFactoryAddress}</a>
           </Col>
         </Row>
 
