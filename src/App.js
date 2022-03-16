@@ -44,6 +44,8 @@ function App() {
     creatureAccessoryFactory: null,
   })
 
+  const [refresh, setRefresh] = useState(null)
+
   const [creature, setCreature] = useState({})
   const [creatureFactory, setCreatureFactory] = useState({})
   const [creatureAccessory, setCreatureAccessory] = useState({})
@@ -102,10 +104,20 @@ function App() {
         })
       }
       if(contract.creatureAccessory) {
+        const items = await Promise.all(itemAccessoryIds.map(async (id) => ({
+          id,
+          balance: await contract.creatureAccessory.methods.balanceOf(currentAddress, id).call(),
+          creator: await contract.creatureAccessory.methods.creators(id).call(),
+          totalSupply: await contract.creatureAccessory.methods.totalSupply(id).call(),
+        })))
+        console.log('items: ', items)
+
         setCreatureAccessory({
           name: await contract.creatureAccessory.methods.name().call(),
           symbol: await contract.creatureAccessory.methods.symbol().call(),
           owner: await contract.creatureAccessory.methods.owner().call(),
+          isApprovedForFactory: await contract.creatureAccessory.methods.isApprovedForAll(currentAddress, creatureAccessoryFactoryAddress).call(),
+          items
         })
       }
       if(contract.creatureAccessoryLootBox) {
@@ -116,7 +128,6 @@ function App() {
           creator: await contract.creatureAccessoryLootBox.methods.creators(id).call(),
           totalSupply: await contract.creatureAccessoryLootBox.methods.totalSupply(id).call(),
         })))
-        console.log('items: ', items)
         setCreatureAccessoryLootBox({
           name: await contract.creatureAccessoryLootBox.methods.name().call(),
           symbol: await contract.creatureAccessoryLootBox.methods.symbol().call(),
@@ -133,7 +144,7 @@ function App() {
       }
     }
     setInfo().then(() => console.log('update success!'));
-  }, [contract])
+  }, [contract, refresh])
 
   const mintTo = async (option, address) => {
     const receipt = await contract.creatureFactory.methods.mint(option,address).send({from: currentAddress});
@@ -143,11 +154,20 @@ function App() {
   const mint1155To = async (option, address, amount = 3) => {
     const receipt = await contract.creatureAccessoryFactory.methods.mint(option,address, amount, "0x0").send({from: currentAddress});
     console.log('mint receipt: ', receipt);
+    setRefresh(1)
   }
 
   const unpack1155LootBox = async (id) => {
     const receipt = await contract.creatureAccessoryLootBox.methods.unpack(id,currentAddress, 3).send({from: currentAddress});
     console.log('unpack receipt: ', receipt);
+    setRefresh(2)
+  }
+
+
+  const approveForFactory = async () => {
+    const receipt = await contract.creatureAccessory.methods.setApprovalForAll(creatureAccessoryFactoryAddress, true).send({from: currentAddress});
+    console.log('receipt: ', receipt);
+    setRefresh(3)
   }
 
   return (
@@ -203,8 +223,23 @@ function App() {
           <Col>
             <p>Owner: {creatureAccessory.owner}</p>
           </Col>
+          <Col>
+            <p>Is Approve for factory: {creatureAccessory.isApprovedForFactory}</p>
+          </Col>
+          <Col>
+            <Button onClick={()=> approveForFactory()} disabled={creatureAccessory.isApprovedForFactory}>Approve for factory</Button>
+          </Col>
         </Row>
-
+        <Row>
+          {creatureAccessory.items && creatureAccessory.items.map((e, index) => (<Col key={'lootBoxAccessory' + index}><Card>
+            <Card.Body>
+              <Card.Title>Id: {e.id}</Card.Title>
+              <Card.Text>
+                Balance: {e.balance} - Creator: {e.creator} - Total Supply: {e.totalSupply}
+              </Card.Text>
+            </Card.Body>
+          </Card></Col>))}
+        </Row>
         <Row>
           <Col>
             <h2>Creature Accessory Lootbox</h2>
