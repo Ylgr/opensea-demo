@@ -20,6 +20,10 @@ import CreatureAccessoryFactoryAbi from './abi/CreatureAccessoryFactory.json';
 import CreatureAccessoryLootBoxAbi from './abi/CreatureAccessoryLootBox.json';
 import CreatureFactoryAbi from './abi/CreatureFactory.json';
 import LootBoxRandomnessAbi from './abi/LootBoxRandomness.json';
+import WyvernExchangeAbi from './abi/WyvernExchange.json';
+import WyvernProxyRegistryAbi from './abi/WyvernProxyRegistry.json';
+import WyvernTokenTransferProxyAbi from './abi/WyvernTokenTransferProxy.json';
+// const BN = require('bn.js');
 
 function App() {
   // BSC
@@ -43,6 +47,9 @@ function App() {
     lootBoxRandomness: null,
     creatureAccessoryLootBox: null,
     creatureAccessoryFactory: null,
+    wyvernExchange: null,
+    wyvernProxyRegistry: null,
+    wyvernTokenTransferProxy: null,
   })
 
   const [refresh, setRefresh] = useState(null)
@@ -56,6 +63,13 @@ function App() {
   const itemAccessoryIds = [0,1,2,3,4,5];
   const lootBoxAccessoryIds = [0,1,2];
   const bscUrl = 'https://testnet.bscscan.com/address/';
+
+  const wyvernExchangeAddress = '0x48a1dA2E3024dAc9601846ae3Ff5a4E4b3205BB9';
+  const wyvernTokenTransferProxyAddress = '0x9AE88C95916D403CaB301bDceb5638565F2860C6';
+  const wyvernRegistryProxyAddress = '0x588CcA53d3039c934c52f523867a0ecf05a86c45';
+
+  const [wyvernExchange, setWyvernExchange] = useState({});
+
 
   const connectWallet = async () => {
     if (window.ethereum) {
@@ -74,6 +88,9 @@ function App() {
         lootBoxRandomness: new web3.eth.Contract(LootBoxRandomnessAbi,lootBoxRandomnessAddress),
         creatureAccessoryLootBox: new web3.eth.Contract(CreatureAccessoryLootBoxAbi,creatureAccessoryLootBoxAddress),
         creatureAccessoryFactory: new web3.eth.Contract(CreatureAccessoryFactoryAbi,creatureAccessoryFactoryAddress),
+        wyvernExchange: new web3.eth.Contract(WyvernExchangeAbi, wyvernExchangeAddress),
+        wyvernProxyRegistry: new web3.eth.Contract(WyvernProxyRegistryAbi, wyvernRegistryProxyAddress),
+        wyvernTokenTransferProxy: new web3.eth.Contract(WyvernTokenTransferProxyAbi, wyvernTokenTransferProxyAddress),
       })
     }
   }
@@ -144,6 +161,17 @@ function App() {
           owner: await contract.creatureAccessoryFactory.methods.owner().call(),
         })
       }
+      if(contract.wyvernExchange) {
+        setWyvernExchange({
+          tokenProxyTransfer: await contract.wyvernExchange.methods.tokenTransferProxy().call(),
+          minimumTakerProtocolFee: await contract.wyvernExchange.methods.minimumTakerProtocolFee().call(),
+          protocolFeeRecipient: await contract.wyvernExchange.methods.protocolFeeRecipient().call(),
+          exchangeToken: await contract.wyvernExchange.methods.exchangeToken().call(),
+          inverseBasisPoint: await contract.wyvernExchange.methods.INVERSE_BASIS_POINT().call(),
+          registry: await contract.wyvernExchange.methods.registry().call(),
+          owner: await contract.wyvernExchange.methods.owner().call(),
+        })
+      }
     }
     setInfo().then(() => console.log('update success!'));
   }, [contract, refresh])
@@ -196,6 +224,51 @@ function App() {
   //   console.log('receipt: ', receipt);
   //   setRefresh(3)
   // }
+
+  const createOrder = async () => {
+    const order = makeOrder(wyvernExchangeAddress);
+    const recipt = await contract.wyvernExchange.methods.approveOrder_(
+        [order.exchange, order.maker, order.taker, order.feeRecipient, order.target, order.staticTarget, order.paymentToken],
+        [order.makerRelayerFee, order.takerRelayerFee, order.makerProtocolFee, order.takerProtocolFee, order.basePrice, order.extra, order.listingTime, order.expirationTime, order.salt],
+        order.feeMethod,
+        order.side,
+        order.saleKind,
+        order.howToCall,
+        order.calldata,
+        order.replacementPattern,
+        order.staticExtradata,
+        true
+    ).send({from: currentAddress})
+    console.log('recipt: ', recipt)
+  }
+
+  const makeOrder = (exchange, isMaker) => ({
+    exchange: exchange,
+    maker: currentAddress,
+    taker: currentAddress,
+    makerRelayerFee: 0,
+    takerRelayerFee: 0,
+    makerProtocolFee: 0,
+    takerProtocolFee: 0,
+    feeRecipient: isMaker ? currentAddress : '0x0000000000000000000000000000000000000000',
+    feeMethod: 0,
+    side: 0,
+    saleKind: 0,
+    target: '0xe5964714d169eDf12B3C406768BE877EB87711f3',
+    howToCall: 0,
+    calldata: '0x',
+    replacementPattern: '0x',
+    staticTarget: '0x0000000000000000000000000000000000000000',
+    staticExtradata: '0x',
+    paymentToken: currentAddress,
+    // basePrice: new BN(0),
+    basePrice: '0',
+    extra: 0,
+    listingTime: 0,
+    expirationTime: 0,
+    // salt: new BN(0)
+    salt: '0'
+  })
 
   return (
     <div className="App">
@@ -328,6 +401,35 @@ function App() {
             <h1>Wyvern Exchange</h1>
           </Col>
         </Row>
+        <Row>
+          <Col>
+            <p>Token proxy transfer: {wyvernExchange.tokenProxyTransfer}</p>
+          </Col>
+          <Col>
+            <p>Minimum take proxy fee: {wyvernExchange.minimumTakerProtocolFee}</p>
+          </Col>
+          <Col>
+            <p>Protocol fee receipt: {wyvernExchange.protocolFeeRecipient}</p>
+          </Col>
+          <Col>
+            <p>Exchange token: {wyvernExchange.exchangeToken}</p>
+          </Col>
+          <Col>
+            <p>Inverse basic point: {wyvernExchange.inverseBasisPoint}</p>
+          </Col>
+          <Col>
+            <p>Registry: {wyvernExchange.registry}</p>
+          </Col>
+          <Col>
+            <p>Owner: {wyvernExchange.owner}</p>
+          </Col>
+        </Row>
+        <Row>
+          <Col>
+            <Button onClick={() => createOrder()}>Create order</Button>
+          </Col>
+        </Row>
+
       </Container>
     </div>
   );
