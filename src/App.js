@@ -129,7 +129,6 @@ function App() {
           creator: await contract.creatureAccessory.methods.creators(id).call(),
           totalSupply: await contract.creatureAccessory.methods.totalSupply(id).call(),
         })))
-        console.log('items: ', items)
 
         setCreatureAccessory({
           name: await contract.creatureAccessory.methods.name().call(),
@@ -291,6 +290,119 @@ function App() {
         true
     ).send({from: currentAddress})
     console.log('recipt: ', recipt)
+  }
+
+  const createTwoOrderThatMatchAuto = async () => {
+    let buy = makeOrder(wyvernExchangeAddress, false)
+    let sell = makeOrder(wyvernExchangeAddress, true)
+    sell.side = 1
+    buy.feeMethod = 1
+    sell.feeMethod = 1
+    buy.paymentToken = '0x0000000000000000000000000000000000000000'
+    sell.paymentToken = '0x0000000000000000000000000000000000000000'
+    buy.basePrice = '10000'
+    sell.basePrice = '10000'
+    sell.takerProtocolFee = '100'
+    sell.takerRelayerFee = '100'
+    buy.takerProtocolFee = '100'
+    buy.takerRelayerFee = '100'
+
+    const canOderMatch = await contract.wyvernExchange.methods.ordersCanMatch_(
+        [buy.exchange, buy.maker, buy.taker, buy.feeRecipient, buy.target, buy.staticTarget, buy.paymentToken, sell.exchange, sell.maker, sell.taker, sell.feeRecipient, sell.target, sell.staticTarget, sell.paymentToken],
+        [buy.makerRelayerFee, buy.takerRelayerFee, buy.makerProtocolFee, buy.takerProtocolFee, buy.basePrice, buy.extra, buy.listingTime, buy.expirationTime, buy.salt, sell.makerRelayerFee, sell.takerRelayerFee, sell.makerProtocolFee, sell.takerProtocolFee, sell.basePrice, sell.extra, sell.listingTime, sell.expirationTime, sell.salt],
+        [buy.feeMethod, buy.side, buy.saleKind, buy.howToCall, sell.feeMethod, sell.side, sell.saleKind, sell.howToCall],
+        buy.calldata,
+        sell.calldata,
+        buy.replacementPattern,
+        sell.replacementPattern,
+        buy.staticExtradata,
+        sell.staticExtradata
+    ).call();
+    console.log('canOderMatch: ', canOderMatch);
+
+    const buyOrder = await contract.wyvernExchange.methods.approveOrder_(
+        [buy.exchange, buy.maker, buy.taker, buy.feeRecipient, buy.target, buy.staticTarget, buy.paymentToken],
+        [buy.makerRelayerFee, buy.takerRelayerFee, buy.makerProtocolFee, buy.takerProtocolFee, buy.basePrice, buy.extra, buy.listingTime, buy.expirationTime, buy.salt],
+        buy.feeMethod,
+        buy.side,
+        buy.saleKind,
+        buy.howToCall,
+        buy.calldata,
+        buy.replacementPattern,
+        buy.staticExtradata,
+        true
+    ).send({from: currentAddress})
+    console.log('buyOrder: ', buyOrder)
+
+    const sellOrder = await contract.wyvernExchange.methods.approveOrder_(
+        [sell.exchange, sell.maker, sell.taker, sell.feeRecipient, sell.target, sell.staticTarget, sell.paymentToken],
+        [sell.makerRelayerFee, sell.takerRelayerFee, sell.makerProtocolFee, sell.takerProtocolFee, sell.basePrice, sell.extra, sell.listingTime, sell.expirationTime, sell.salt],
+        sell.feeMethod,
+        sell.side,
+        sell.saleKind,
+        sell.howToCall,
+        sell.calldata,
+        sell.replacementPattern,
+        sell.staticExtradata,
+        true
+    ).send({from: currentAddress})
+    console.log('sellOrder: ', sellOrder)
+    const buyHash = hashOrder(buy)
+    const sellHash = hashOrder(sell)
+
+    let buySignature = await web3.eth.sign(buyHash, currentAddress)
+    buySignature = buySignature.substr(2)
+    const br = '0x' + buySignature.slice(0, 64)
+    const bs = '0x' + buySignature.slice(64, 128)
+    const bv = 27 + parseInt('0x' + buySignature.slice(128, 130), 16)
+    let sellSignature = await web3.eth.sign(sellHash, currentAddress)
+    sellSignature = sellSignature.substr(2)
+    const sr = '0x' + sellSignature.slice(0, 64)
+    const ss = '0x' + sellSignature.slice(64, 128)
+    const sv = 27 + parseInt('0x' + sellSignature.slice(128, 130), 16)
+
+    const autoMatchingOrder =  await contract.wyvernExchange.methods.atomicMatch_(
+        [buy.exchange, buy.maker, buy.taker, buy.feeRecipient, buy.target, buy.staticTarget, buy.paymentToken, sell.exchange, sell.maker, sell.taker, sell.feeRecipient, sell.target, sell.staticTarget, sell.paymentToken],
+        [buy.makerRelayerFee, buy.takerRelayerFee, buy.makerProtocolFee, buy.takerProtocolFee, buy.basePrice, buy.extra, buy.listingTime, buy.expirationTime, buy.salt, sell.makerRelayerFee, sell.takerRelayerFee, sell.makerProtocolFee, sell.takerProtocolFee, sell.basePrice, sell.extra, sell.listingTime, sell.expirationTime, sell.salt],
+        [buy.feeMethod, buy.side, buy.saleKind, buy.howToCall, sell.feeMethod, sell.side, sell.saleKind, sell.howToCall],
+        buy.calldata,
+        sell.calldata,
+        buy.replacementPattern,
+        sell.replacementPattern,
+        buy.staticExtradata,
+        sell.staticExtradata,
+        [bv, sv],
+        [br, bs, sr, ss, '0x0000000000000000000000000000000000000000000000000000000000000000']
+    ).send({from: currentAddress})
+    console.log('autoMatchingOrder: ', autoMatchingOrder);
+  }
+
+  const hashOrder = (order) => {
+    return web3.utils.soliditySha3(
+        {type: 'address', value: order.exchange},
+        {type: 'address', value: order.maker},
+        {type: 'address', value: order.taker},
+        {type: 'uint', value: order.makerRelayerFee},
+        {type: 'uint', value: order.takerRelayerFee},
+        {type: 'uint', value: order.takerProtocolFee},
+        {type: 'uint', value: order.takerProtocolFee},
+        {type: 'address', value: order.feeRecipient},
+        {type: 'uint8', value: order.feeMethod},
+        {type: 'uint8', value: order.side},
+        {type: 'uint8', value: order.saleKind},
+        {type: 'address', value: order.target},
+        {type: 'uint8', value: order.howToCall},
+        {type: 'bytes', value: order.calldata},
+        {type: 'bytes', value: order.replacementPattern},
+        {type: 'address', value: order.staticTarget},
+        {type: 'bytes', value: order.staticExtradata},
+        {type: 'address', value: order.paymentToken},
+        {type: 'uint', value: order.basePrice},
+        {type: 'uint', value: order.extra},
+        {type: 'uint', value: order.listingTime},
+        {type: 'uint', value: order.expirationTime},
+        {type: 'uint', value: order.salt}
+    ).toString('hex')
   }
 
   const makeOrder = (exchange, isMaker) => ({
@@ -478,6 +590,7 @@ function App() {
         <Row>
           <Col>
             <Button onClick={() => createOrder()}>Create order</Button>
+            <Button onClick={() => createTwoOrderThatMatchAuto()}>Create Two Order That Match Auto</Button>
             <Button onClick={() => loadOrder()}>Load order</Button>
           </Col>
         </Row>
