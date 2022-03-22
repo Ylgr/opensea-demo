@@ -69,7 +69,7 @@ function App() {
   const wyvernRegistryProxyAddress = '0x588CcA53d3039c934c52f523867a0ecf05a86c45';
 
   const [wyvernExchange, setWyvernExchange] = useState({});
-
+  const [ordersExchange, setOrdersExchange] = useState([]);
 
   const connectWallet = async () => {
     if (window.ethereum) {
@@ -225,6 +225,57 @@ function App() {
   //   setRefresh(3)
   // }
 
+  const loadOrder = async () => {
+    console.log('loading orders ....')
+    const currentBlock = await web3.eth.getBlockNumber()
+
+    const logsPartOne = await contract.wyvernExchange.getPastEvents('OrderApprovedPartOne', {
+      fromBlock: currentBlock-5000,
+      toBlock: currentBlock,
+    })
+    const logsPartTwo = await contract.wyvernExchange.getPastEvents('OrderApprovedPartTwo', {
+      fromBlock: currentBlock-5000,
+      toBlock: currentBlock,
+    })
+
+    setOrdersExchange(
+        logsPartOne.map((partOne, index) => {
+          const partOneValues = partOne.returnValues;
+          const partTwoValues = logsPartTwo[index].returnValues;
+          console.log('partOneValues: ', partOneValues)
+          console.log('partTwoValues: ', partTwoValues)
+          return {
+            exchange: partOneValues.exchange,
+            feeMethod: partOneValues.feeMethod,
+            feeRecipient: partOneValues.feeRecipient,
+            hash: partOneValues.hash,
+            maker: partOneValues.maker,
+            makerProtocolFee: partOneValues.makerProtocolFee,
+            makerRelayerFee: partOneValues.makerRelayerFee,
+            saleKind: partOneValues.saleKind,
+            side: partOneValues.side,
+            taker: partOneValues.taker,
+            takerProtocolFee: partOneValues.takerProtocolFee,
+            takerRelayerFee: partOneValues.takerRelayerFee,
+            target: partOneValues.target,
+            basePrice: partTwoValues.basePrice,
+            calldata: partTwoValues.calldata,
+            expirationTime: partTwoValues.expirationTime,
+            extra: partTwoValues.extra,
+            howToCall: partTwoValues.howToCall,
+            listingTime: partTwoValues.listingTime,
+            orderbookInclusionDesired: partTwoValues.orderbookInclusionDesired,
+            paymentToken: partTwoValues.paymentToken,
+            replacementPattern: partTwoValues.replacementPattern,
+            salt: partTwoValues.salt,
+            staticExtradata: partTwoValues.staticExtradata,
+            staticTarget: partTwoValues.staticTarget,
+          }
+        })
+    )
+
+  }
+
   const createOrder = async () => {
     const order = makeOrder(wyvernExchangeAddress);
     const recipt = await contract.wyvernExchange.methods.approveOrder_(
@@ -267,7 +318,7 @@ function App() {
     listingTime: 0,
     expirationTime: 0,
     // salt: new BN(0)
-    salt: '0'
+    salt: '1'
   })
 
   return (
@@ -427,8 +478,38 @@ function App() {
         <Row>
           <Col>
             <Button onClick={() => createOrder()}>Create order</Button>
+            <Button onClick={() => loadOrder()}>Load order</Button>
           </Col>
         </Row>
+        {ordersExchange && ordersExchange.map(e => (<Row key={e.hash}>
+          <Col>
+            <p>hash: {e.hash}</p>
+            <p>exchange: {e.exchange}</p>
+            <p>feeMethod: {e.feeMethod}</p>
+            <p>feeRecipient: {e.feeRecipient}</p>
+            <p>maker: {e.maker}</p>
+            <p>makerProtocolFee: {e.makerProtocolFee}</p>
+            <p>makerRelayerFee: {e.makerRelayerFee}</p>
+            <p>saleKind: {e.saleKind}</p>
+            <p>side: {e.side}</p>
+            <p>taker: {e.taker}</p>
+            <p>takerProtocolFee: {e.takerProtocolFee}</p>
+            <p>takerRelayerFee: {e.takerRelayerFee}</p>
+            <p>target: {e.target}</p>
+            <p>basePrice: {e.basePrice}</p>
+            <p>calldata: {e.calldata}</p>
+            <p>expirationTime: {e.expirationTime}</p>
+            <p>extra: {e.extra}</p>
+            <p>howToCall: {e.howToCall}</p>
+            <p>listingTime: {e.listingTime}</p>
+            <p>orderbookInclusionDesired: {e.orderbookInclusionDesired}</p>
+            <p>paymentToken: {e.paymentToken}</p>
+            <p>replacementPattern: {e.replacementPattern}</p>
+            <p>salt: {e.salt}</p>
+            <p>staticExtradata: {e.staticExtradata}</p>
+            <p>staticTarget: {e.staticTarget}</p>
+          </Col>
+        </Row>))}
 
       </Container>
     </div>
