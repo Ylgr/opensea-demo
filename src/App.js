@@ -23,7 +23,8 @@ import LootBoxRandomnessAbi from './abi/LootBoxRandomness.json';
 import WyvernExchangeAbi from './abi/WyvernExchange.json';
 import WyvernProxyRegistryAbi from './abi/WyvernProxyRegistry.json';
 import WyvernTokenTransferProxyAbi from './abi/WyvernTokenTransferProxy.json';
-// const BN = require('bn.js');
+import BeinChainAbi from './abi/BeinChain.json';
+const BigNumber = require('bignumber.js')
 
 function App() {
   // BSC
@@ -50,6 +51,7 @@ function App() {
     wyvernExchange: null,
     wyvernProxyRegistry: null,
     wyvernTokenTransferProxy: null,
+    bic: null,
   })
 
   const [refresh, setRefresh] = useState(null)
@@ -64,9 +66,13 @@ function App() {
   const lootBoxAccessoryIds = [0,1,2];
   const bscUrl = 'https://testnet.bscscan.com/address/';
 
-  const wyvernExchangeAddress = '0x48a1dA2E3024dAc9601846ae3Ff5a4E4b3205BB9';
-  const wyvernTokenTransferProxyAddress = '0x9AE88C95916D403CaB301bDceb5638565F2860C6';
   const wyvernRegistryProxyAddress = '0x588CcA53d3039c934c52f523867a0ecf05a86c45';
+  // const wyvernExchangeAddress = '0x48a1dA2E3024dAc9601846ae3Ff5a4E4b3205BB9';
+  // const wyvernTokenTransferProxyAddress = '0x9AE88C95916D403CaB301bDceb5638565F2860C6';
+  // const bicAddress = '0x43b67834264a9C9B18692A91e5C86b5f6dBAbA21';
+  const wyvernExchangeAddress = '0xc995eD4282f247B739f8103583688c33f3B578A0';
+  const wyvernTokenTransferProxyAddress = '0x8593C8403C1C7Ac6C6F00062f648EA5fd2cfb482';
+  const bicAddress = '0x25E59A6309826446565C96c4780f145cA2d3581f';
 
   const [wyvernExchange, setWyvernExchange] = useState({});
   const [ordersExchange, setOrdersExchange] = useState([]);
@@ -91,6 +97,7 @@ function App() {
         wyvernExchange: new web3.eth.Contract(WyvernExchangeAbi, wyvernExchangeAddress),
         wyvernProxyRegistry: new web3.eth.Contract(WyvernProxyRegistryAbi, wyvernRegistryProxyAddress),
         wyvernTokenTransferProxy: new web3.eth.Contract(WyvernTokenTransferProxyAbi, wyvernTokenTransferProxyAddress),
+        bic: new web3.eth.Contract(BeinChainAbi, bicAddress)
       })
     }
   }
@@ -169,6 +176,7 @@ function App() {
           inverseBasisPoint: await contract.wyvernExchange.methods.INVERSE_BASIS_POINT().call(),
           registry: await contract.wyvernExchange.methods.registry().call(),
           owner: await contract.wyvernExchange.methods.owner().call(),
+          proxyCurrentAddress: await contract.wyvernProxyRegistry.methods.proxies(currentAddress).call(),
         })
       }
     }
@@ -298,14 +306,26 @@ function App() {
     sell.side = 1
     buy.feeMethod = 1
     sell.feeMethod = 1
-    buy.paymentToken = '0x0000000000000000000000000000000000000000'
-    sell.paymentToken = '0x0000000000000000000000000000000000000000'
-    buy.basePrice = '10000'
-    sell.basePrice = '10000'
-    sell.takerProtocolFee = '100'
-    sell.takerRelayerFee = '100'
-    buy.takerProtocolFee = '100'
-    buy.takerRelayerFee = '100'
+    // buy.paymentToken = '0x0000000000000000000000000000000000000000'
+    // sell.paymentToken = '0x0000000000000000000000000000000000000000'
+    buy.paymentToken = bicAddress
+    sell.paymentToken = bicAddress
+    buy.basePrice = new BigNumber(10000).toString()
+    sell.basePrice = new BigNumber(10000).toString()
+    sell.makerProtocolFee = new BigNumber(100).toString()
+    sell.makerRelayerFee = new BigNumber(100).toString()
+
+    // const callFunc = contract.creature.methods.transferFrom('0xF4402fE2B09da7c02504DC308DBc307834CE56fE', '0xeaBcd21B75349c59a4177E10ed17FBf2955fE697', 20).encodeABI()
+    // buy.calldata = callFunc;
+    // sell.calldata = callFunc;
+
+    // await contract.wyvernProxyRegistry.methods.grantInitialAuthentication(wyvernExchangeAddress).send({from: currentAddress})
+
+    const allowance = await contract.bic.methods.allowance(currentAddress, wyvernTokenTransferProxyAddress).call()
+    console.log('allowance: ', allowance);
+    if(allowance == 0) {
+      await contract.bic.methods.approve(wyvernTokenTransferProxyAddress, '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff').send({from: currentAddress});
+    }
 
     const canOderMatch = await contract.wyvernExchange.methods.ordersCanMatch_(
         [buy.exchange, buy.maker, buy.taker, buy.feeRecipient, buy.target, buy.staticTarget, buy.paymentToken, sell.exchange, sell.maker, sell.taker, sell.feeRecipient, sell.target, sell.staticTarget, sell.paymentToken],
@@ -320,33 +340,33 @@ function App() {
     ).call();
     console.log('canOderMatch: ', canOderMatch);
 
-    const buyOrder = await contract.wyvernExchange.methods.approveOrder_(
-        [buy.exchange, buy.maker, buy.taker, buy.feeRecipient, buy.target, buy.staticTarget, buy.paymentToken],
-        [buy.makerRelayerFee, buy.takerRelayerFee, buy.makerProtocolFee, buy.takerProtocolFee, buy.basePrice, buy.extra, buy.listingTime, buy.expirationTime, buy.salt],
-        buy.feeMethod,
-        buy.side,
-        buy.saleKind,
-        buy.howToCall,
-        buy.calldata,
-        buy.replacementPattern,
-        buy.staticExtradata,
-        true
-    ).send({from: currentAddress})
-    console.log('buyOrder: ', buyOrder)
+    // const buyOrder = await contract.wyvernExchange.methods.approveOrder_(
+    //     [buy.exchange, buy.maker, buy.taker, buy.feeRecipient, buy.target, buy.staticTarget, buy.paymentToken],
+    //     [buy.makerRelayerFee, buy.takerRelayerFee, buy.makerProtocolFee, buy.takerProtocolFee, buy.basePrice, buy.extra, buy.listingTime, buy.expirationTime, buy.salt],
+    //     buy.feeMethod,
+    //     buy.side,
+    //     buy.saleKind,
+    //     buy.howToCall,
+    //     buy.calldata,
+    //     buy.replacementPattern,
+    //     buy.staticExtradata,
+    //     true
+    // ).send({from: currentAddress})
+    // console.log('buyOrder: ', buyOrder)
+    //
+    // const sellOrder = await contract.wyvernExchange.methods.approveOrder_(
+    //     [sell.exchange, sell.maker, sell.taker, sell.feeRecipient, sell.target, sell.staticTarget, sell.paymentToken],
+    //     [sell.makerRelayerFee, sell.takerRelayerFee, sell.makerProtocolFee, sell.takerProtocolFee, sell.basePrice, sell.extra, sell.listingTime, sell.expirationTime, sell.salt],
+    //     sell.feeMethod,
+    //     sell.side,
+    //     sell.saleKind,
+    //     sell.howToCall,
+    //     sell.calldata,
+    //     sell.replacementPattern,
+    //     sell.staticExtradata,
+    //     true
+    // ).send({from: currentAddress})
 
-    const sellOrder = await contract.wyvernExchange.methods.approveOrder_(
-        [sell.exchange, sell.maker, sell.taker, sell.feeRecipient, sell.target, sell.staticTarget, sell.paymentToken],
-        [sell.makerRelayerFee, sell.takerRelayerFee, sell.makerProtocolFee, sell.takerProtocolFee, sell.basePrice, sell.extra, sell.listingTime, sell.expirationTime, sell.salt],
-        sell.feeMethod,
-        sell.side,
-        sell.saleKind,
-        sell.howToCall,
-        sell.calldata,
-        sell.replacementPattern,
-        sell.staticExtradata,
-        true
-    ).send({from: currentAddress})
-    console.log('sellOrder: ', sellOrder)
     const buyHash = hashOrder(buy)
     const sellHash = hashOrder(sell)
 
@@ -378,14 +398,14 @@ function App() {
   }
 
   const hashOrder = (order) => {
-    return web3.utils.soliditySha3(
+    return Web3.utils.soliditySha3(
         {type: 'address', value: order.exchange},
         {type: 'address', value: order.maker},
         {type: 'address', value: order.taker},
-        {type: 'uint', value: order.makerRelayerFee},
-        {type: 'uint', value: order.takerRelayerFee},
-        {type: 'uint', value: order.takerProtocolFee},
-        {type: 'uint', value: order.takerProtocolFee},
+        {type: 'uint', value: new BigNumber(order.makerRelayerFee)},
+        {type: 'uint', value: new BigNumber(order.takerRelayerFee)},
+        {type: 'uint', value: new BigNumber(order.takerProtocolFee)},
+        {type: 'uint', value: new BigNumber(order.takerProtocolFee)},
         {type: 'address', value: order.feeRecipient},
         {type: 'uint8', value: order.feeMethod},
         {type: 'uint8', value: order.side},
@@ -397,10 +417,10 @@ function App() {
         {type: 'address', value: order.staticTarget},
         {type: 'bytes', value: order.staticExtradata},
         {type: 'address', value: order.paymentToken},
-        {type: 'uint', value: order.basePrice},
-        {type: 'uint', value: order.extra},
-        {type: 'uint', value: order.listingTime},
-        {type: 'uint', value: order.expirationTime},
+        {type: 'uint', value: new BigNumber(order.basePrice)},
+        {type: 'uint', value: new BigNumber(order.extra)},
+        {type: 'uint', value: new BigNumber(order.listingTime)},
+        {type: 'uint', value: new BigNumber(order.expirationTime)},
         {type: 'uint', value: order.salt}
     ).toString('hex')
   }
@@ -424,13 +444,11 @@ function App() {
     staticTarget: '0x0000000000000000000000000000000000000000',
     staticExtradata: '0x',
     paymentToken: currentAddress,
-    // basePrice: new BN(0),
-    basePrice: '0',
+    basePrice: new BigNumber(0).toString(),
     extra: 0,
     listingTime: 0,
     expirationTime: 0,
-    // salt: new BN(0)
-    salt: '1'
+    salt: new BigNumber(5).toString()
   })
 
   return (
@@ -585,6 +603,7 @@ function App() {
           </Col>
           <Col>
             <p>Owner: {wyvernExchange.owner}</p>
+            <p>ProxyCurrentAddress: {wyvernExchange.proxyCurrentAddress}</p>
           </Col>
         </Row>
         <Row>
