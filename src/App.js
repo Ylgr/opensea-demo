@@ -24,6 +24,10 @@ import WyvernExchangeAbi from './abi/WyvernExchange.json';
 import WyvernProxyRegistryAbi from './abi/WyvernProxyRegistry.json';
 import WyvernTokenTransferProxyAbi from './abi/WyvernTokenTransferProxy.json';
 import BeinChainAbi from './abi/BeinChain.json';
+import {WyvernSchemaName} from "./utils/types";
+import * as WyvernSchemas from 'wyvern-schemas';
+import {encodeBuy, encodeSell} from "wyvern-schemas";
+
 const BigNumber = require('bignumber.js')
 
 function App() {
@@ -301,6 +305,7 @@ function App() {
   }
 
   const createTwoOrderThatMatchAuto = async () => {
+
     let buy = makeOrder(wyvernExchangeAddress, false)
     let sell = makeOrder(wyvernExchangeAddress, true)
     sell.side = 1
@@ -314,6 +319,29 @@ function App() {
     sell.basePrice = new BigNumber(10000).toString()
     sell.makerProtocolFee = new BigNumber(100).toString()
     sell.makerRelayerFee = new BigNumber(100).toString()
+
+    const schema = _getSchema()
+    const sellSpec = encodeSell(
+        schema,
+        {address: creatureAddress, id: '20'},
+        currentAddress,
+    )
+    const buySpec = encodeBuy(
+        schema,
+        {address: creatureAddress, id: '20'},
+        currentAddress,
+    );
+    console.log('sellSpec: ', sellSpec)
+    console.log('buySpec: ', buySpec)
+
+    buy.calldata = buySpec.calldata
+    buy.replacementPattern = buySpec.replacementPattern
+    buy.target = buySpec.target
+
+    sell.calldata = sellSpec.calldata
+    sell.replacementPattern = sellSpec.replacementPattern
+    sell.target = sellSpec.target
+
 
     // const callFunc = contract.creature.methods.transferFrom('0xF4402fE2B09da7c02504DC308DBc307834CE56fE', '0xeaBcd21B75349c59a4177E10ed17FBf2955fE697', 20).encodeABI()
     // buy.calldata = callFunc;
@@ -425,6 +453,20 @@ function App() {
     ).toString('hex')
   }
 
+  const _getSchema = () => {
+    const schemaName_ = 'ERC721';
+    const schema = WyvernSchemas.schemas['main'].filter(
+        (s) => s.name == schemaName_
+    )[0];
+
+    if (!schema) {
+      throw new Error(
+          `Trading for this asset (${schemaName_}) is not yet supported. Please contact us or check back later!`
+      );
+    }
+    return schema;
+  }
+
   const makeOrder = (exchange, isMaker) => ({
     exchange: exchange,
     maker: currentAddress,
@@ -448,7 +490,7 @@ function App() {
     extra: 0,
     listingTime: 0,
     expirationTime: 0,
-    salt: new BigNumber(5).toString()
+    salt: new BigNumber(1).toString()
   })
 
   return (
