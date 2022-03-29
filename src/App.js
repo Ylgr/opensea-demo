@@ -32,13 +32,13 @@ const BigNumber = require('bignumber.js')
 
 function App() {
   // BSC
-  const creatureAddress = '0x7b66280a97D4C706E896C534aBEd8d7Bc3D15492';
-  const creatureFactoryAddress = '0x3235197a44c4C6B8747b3103e2B9B11719E869A5';
-  const creatureLootBoxAddress = '0xD9Ff70e4282AA3Fa0bFA57fBD3334d7e750FAfc2';
-  const creatureAccessoryAddress = '0x3B9dcf4D8Ef37ECe348EF80AD70f1c073aC4Ab60';
-  const lootBoxRandomnessAddress = '0x16ab070Ca481C1ebC180dB92c2Ae956BAA1bde6b';
-  const creatureAccessoryLootBoxAddress = '0x91324eA105eA26181d3Bb54AE12DC28616fa17e8';
-  const creatureAccessoryFactoryAddress = '0x122FE47593fe359D52AeBa9c5ACE05CBe2d84c67';
+  const creatureAddress = '0x5A60B59f97DD2cF79FB6e3Fa02615490ba0515ed';
+  const creatureFactoryAddress = '0xa9A5e9a97609b66aF4e61f7D56A56D91FCC1477c';
+  const creatureLootBoxAddress = '0x1f71d5cAEe1d1d2e90882259499c6deb16229765';
+  const creatureAccessoryAddress = '0xe356c144377a55C052dC0E4541b7aDBb7DaC9d2f';
+  const lootBoxRandomnessAddress = '0x17873f25764A23602fbea48C0Eb88f259479DECD';
+  const creatureAccessoryLootBoxAddress = '0xC9eB2CA1b9228BCe443d70cA5ec6BA0124f9f252';
+  const creatureAccessoryFactoryAddress = '0x844faf6746e4C4cc675129094DfA030E2908923C';
 
   const [web3, setWeb3] = useState(null)
   const [currentAddress, setCurrentAddress] = useState(null)
@@ -77,6 +77,11 @@ function App() {
   const wyvernExchangeAddress = '0xc995eD4282f247B739f8103583688c33f3B578A0';
   const wyvernTokenTransferProxyAddress = '0x8593C8403C1C7Ac6C6F00062f648EA5fd2cfb482';
   const bicAddress = '0x25E59A6309826446565C96c4780f145cA2d3581f';
+  // const bicAddress = '0x5Ee48c5bb1823f35Fc7659644E988f15f9611AD0';
+  const sellAddress = '0xADdbCB89bD7e1D2F7A9AC95Ab0b8F5679326c4d3';
+  const buyAddress = '0x8E3ba900481b8d815889FDde0a9A9d78AC692ECD'; //'0x8E3ba900481b8d815889FDde0a9A9d78AC692ECD';
+  const proxyTargetBuy = '0xeCbe315f59dD43B8c83aB771FF7f16f9A00d5C40';
+  const proxyTargetSell = '0x304c667F125056c2db5d1b25c6D030aE43E8a8b7';
 
   const [wyvernExchange, setWyvernExchange] = useState({});
   const [ordersExchange, setOrdersExchange] = useState([]);
@@ -230,11 +235,11 @@ function App() {
   }
 
 
-  // const approveForFactory = async () => {
-  //   const receipt = await contract.creatureAccessory.methods.setApprovalForAll(creatureAccessoryFactoryAddress, true).send({from: currentAddress});
-  //   console.log('receipt: ', receipt);
-  //   setRefresh(3)
-  // }
+  const approveForFactory = async () => {
+    const receipt = await contract.creatureAccessory.methods.setApprovalForAll(creatureAccessoryFactoryAddress, true).send({from: currentAddress});
+    console.log('receipt: ', receipt);
+    setRefresh(3)
+  }
 
   const loadOrder = async () => {
     console.log('loading orders ....')
@@ -304,7 +309,163 @@ function App() {
     console.log('recipt: ', recipt)
   }
 
+  // 0xADdbCB89bD7e1D2F7A9AC95Ab0b8F5679326c4d3 - sell
+  // 0x8E3ba900481b8d815889FDde0a9A9d78AC692ECD - buy
+
+  const createSellOrder1 = async () => {
+    // let buy = makeOrder(wyvernExchangeAddress, false)
+    let sell = makeOrderDetail(wyvernExchangeAddress, true, sellAddress, '0x0000000000000000000000000000000000000000', proxyTargetSell)
+    sell.side = 1
+    // buy.feeMethod = 1
+    sell.feeMethod = 1
+    // buy.paymentToken = bicAddress
+    sell.paymentToken = bicAddress
+    // buy.basePrice = new BigNumber(10000).toString()
+    sell.basePrice = new BigNumber(10000).toString()
+    sell.makerProtocolFee = new BigNumber(100).toString()
+    sell.makerRelayerFee = new BigNumber(100).toString()
+
+    ///////////////////////////
+    const schema = _getSchema()
+    const sellSpec = encodeSell(
+        schema,
+        {address: creatureAccessoryLootBoxAddress, id: '2', quantity: '3'},
+        sellAddress,
+    )
+
+    console.log('sellSpec: ', sellSpec)
+
+    sell.calldata = sellSpec.calldata
+    sell.replacementPattern = sellSpec.replacementPattern
+    sell.target = sellSpec.target
+///////////////////////////
+    const sellOrder = await contract.wyvernExchange.methods.approveOrder_(
+        [sell.exchange, sell.maker, sell.taker, sell.feeRecipient, sell.target, sell.staticTarget, sell.paymentToken],
+        [sell.makerRelayerFee, sell.takerRelayerFee, sell.makerProtocolFee, sell.takerProtocolFee, sell.basePrice, sell.extra, sell.listingTime, sell.expirationTime, sell.salt],
+        sell.feeMethod,
+        sell.side,
+        sell.saleKind,
+        sell.howToCall,
+        sell.calldata,
+        sell.replacementPattern,
+        sell.staticExtradata,
+        true
+    ).send({from: sellAddress})
+
+
+    const sellHash = hashOrder(sell)
+    let sellSignature = await web3.eth.sign(sellHash, sellAddress)
+    console.log('sellSignature = ', sellSignature);
+    sellSignature = sellSignature.substr(2)
+    const sr = '0x' + sellSignature.slice(0, 64)
+    const ss = '0x' + sellSignature.slice(64, 128)
+    const sv = 27 + parseInt('0x' + sellSignature.slice(128, 130), 16)
+  }
+
+  const createBuyOrder2 = async () => {
+    // await contract.wyvernProxyRegistry.methods.registerProxy().send({from: currentAddress})
+    //
+    // await contract.wyvernProxyRegistry.methods.grantInitialAuthentication(wyvernExchangeAddress).send({from: currentAddress})
+    // return
+    let buy = makeOrderDetail(wyvernExchangeAddress, false, buyAddress, sellAddress, proxyTargetSell)
+    let sell = makeOrderDetail(wyvernExchangeAddress, true, sellAddress, '0x0000000000000000000000000000000000000000', proxyTargetSell)
+    sell.side = 1
+    buy.feeMethod = 1
+    sell.feeMethod = 1
+    // buy.paymentToken = '0x0000000000000000000000000000000000000000'
+    // sell.paymentToken = '0x0000000000000000000000000000000000000000'
+    buy.paymentToken = bicAddress
+    sell.paymentToken = bicAddress
+    buy.basePrice = new BigNumber(10000).toString()
+    sell.basePrice = new BigNumber(10000).toString()
+    sell.makerProtocolFee = new BigNumber(100).toString()
+    sell.makerRelayerFee = new BigNumber(100).toString()
+
+    ///////////////////////////
+    const schema = _getSchema()
+    const sellSpec = encodeSell(
+        schema,
+        {address: creatureAccessoryLootBoxAddress, id: '2', quantity: '3'},
+        sellAddress,
+    )
+    const buySpec = encodeBuy(
+        schema,
+        {address: creatureAccessoryLootBoxAddress, id: '2', quantity: '3'},
+        buyAddress,
+    );
+    console.log('sellSpec: ', sellSpec)
+    console.log('buySpec: ', buySpec)
+
+    buy.calldata = buySpec.calldata
+    buy.replacementPattern = buySpec.replacementPattern
+    buy.target = buySpec.target
+
+    sell.calldata = sellSpec.calldata
+    sell.replacementPattern = sellSpec.replacementPattern
+    sell.target = sellSpec.target
+///////////////////////////
+
+
+    const allowance = await contract.bic.methods.allowance(currentAddress, wyvernTokenTransferProxyAddress).call()
+    console.log('allowance: ', allowance);
+    if(allowance == 0) {
+      await contract.bic.methods.approve(wyvernTokenTransferProxyAddress, '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff').send({from: currentAddress});
+    }
+
+    const canOderMatch = await contract.wyvernExchange.methods.ordersCanMatch_(
+        [buy.exchange, buy.maker, buy.taker, buy.feeRecipient, buy.target, buy.staticTarget, buy.paymentToken, sell.exchange, sell.maker, sell.taker, sell.feeRecipient, sell.target, sell.staticTarget, sell.paymentToken],
+        [buy.makerRelayerFee, buy.takerRelayerFee, buy.makerProtocolFee, buy.takerProtocolFee, buy.basePrice, buy.extra, buy.listingTime, buy.expirationTime, buy.salt, sell.makerRelayerFee, sell.takerRelayerFee, sell.makerProtocolFee, sell.takerProtocolFee, sell.basePrice, sell.extra, sell.listingTime, sell.expirationTime, sell.salt],
+        [buy.feeMethod, buy.side, buy.saleKind, buy.howToCall, sell.feeMethod, sell.side, sell.saleKind, sell.howToCall],
+        buy.calldata,
+        sell.calldata,
+        buy.replacementPattern,
+        sell.replacementPattern,
+        buy.staticExtradata,
+        sell.staticExtradata
+    ).call();
+    console.log('canOderMatch: ', canOderMatch);
+
+    const buyHash = hashOrder(buy)
+    const sellHash = hashOrder(sell)
+
+    let buySignature = await web3.eth.sign(buyHash, currentAddress)
+    buySignature = buySignature.substr(2)
+    const br = '0x' + buySignature.slice(0, 64)
+    const bs = '0x' + buySignature.slice(64, 128)
+    const bv = 27 + parseInt('0x' + buySignature.slice(128, 130), 16)
+    // let sellSignature = await web3.eth.sign(sellHash, currentAddress)
+    let sellSignature = '0xfcc5484eefb769cc2412fad9e17e16e4910c4fb3a0f497e24a5a70ec954e2785725a6086d104cf2cab0327ac44e04282b0fab28458c63994f2c8887944965afa1b';
+    sellSignature = sellSignature.substr(2)
+    const sr = '0x' + sellSignature.slice(0, 64)
+    const ss = '0x' + sellSignature.slice(64, 128)
+    const sv = 27 + parseInt('0x' + sellSignature.slice(128, 130), 16)
+
+    const autoMatchingOrder =  await contract.wyvernExchange.methods.atomicMatch_(
+        [buy.exchange, buy.maker, buy.taker, buy.feeRecipient, buy.target, buy.staticTarget, buy.paymentToken, sell.exchange, sell.maker, sell.taker, sell.feeRecipient, sell.target, sell.staticTarget, sell.paymentToken],
+        [buy.makerRelayerFee, buy.takerRelayerFee, buy.makerProtocolFee, buy.takerProtocolFee, buy.basePrice, buy.extra, buy.listingTime, buy.expirationTime, buy.salt, sell.makerRelayerFee, sell.takerRelayerFee, sell.makerProtocolFee, sell.takerProtocolFee, sell.basePrice, sell.extra, sell.listingTime, sell.expirationTime, sell.salt],
+        [buy.feeMethod, buy.side, buy.saleKind, buy.howToCall, sell.feeMethod, sell.side, sell.saleKind, sell.howToCall],
+        buy.calldata,
+        sell.calldata,
+        buy.replacementPattern,
+        sell.replacementPattern,
+        buy.staticExtradata,
+        sell.staticExtradata,
+        [bv, sv],
+        [br, bs, sr, ss, '0x0000000000000000000000000000000000000000000000000000000000000000']
+    ).send({from: currentAddress})
+    console.log('autoMatchingOrder: ', autoMatchingOrder);
+  }
+
+  const createMatchOrder3 = async () => {
+
+  }
+
+
   const createTwoOrderThatMatchAuto = async () => {
+
+    // await contract.wyvernProxyRegistry.methods.registerProxy().send({from: currentAddress})
+    //
+    // await contract.wyvernProxyRegistry.methods.grantInitialAuthentication(wyvernExchangeAddress).send({from: currentAddress})
 
     let buy = makeOrder(wyvernExchangeAddress, false)
     let sell = makeOrder(wyvernExchangeAddress, true)
@@ -320,15 +481,16 @@ function App() {
     sell.makerProtocolFee = new BigNumber(100).toString()
     sell.makerRelayerFee = new BigNumber(100).toString()
 
+    ///////////////////////////
     const schema = _getSchema()
     const sellSpec = encodeSell(
         schema,
-        {address: creatureAddress, id: '20'},
+        {address: creatureAccessoryLootBoxAddress, id: '2', quantity: '3'},
         currentAddress,
     )
     const buySpec = encodeBuy(
         schema,
-        {address: creatureAddress, id: '20'},
+        {address: creatureAccessoryLootBoxAddress, id: '2', quantity: '3'},
         currentAddress,
     );
     console.log('sellSpec: ', sellSpec)
@@ -341,13 +503,12 @@ function App() {
     sell.calldata = sellSpec.calldata
     sell.replacementPattern = sellSpec.replacementPattern
     sell.target = sellSpec.target
-
+///////////////////////////
 
     // const callFunc = contract.creature.methods.transferFrom('0xF4402fE2B09da7c02504DC308DBc307834CE56fE', '0xeaBcd21B75349c59a4177E10ed17FBf2955fE697', 20).encodeABI()
     // buy.calldata = callFunc;
     // sell.calldata = callFunc;
 
-    // await contract.wyvernProxyRegistry.methods.grantInitialAuthentication(wyvernExchangeAddress).send({from: currentAddress})
 
     const allowance = await contract.bic.methods.allowance(currentAddress, wyvernTokenTransferProxyAddress).call()
     console.log('allowance: ', allowance);
@@ -404,6 +565,7 @@ function App() {
     const bs = '0x' + buySignature.slice(64, 128)
     const bv = 27 + parseInt('0x' + buySignature.slice(128, 130), 16)
     let sellSignature = await web3.eth.sign(sellHash, currentAddress)
+    console.log('sellSignature ', sellSignature)
     sellSignature = sellSignature.substr(2)
     const sr = '0x' + sellSignature.slice(0, 64)
     const ss = '0x' + sellSignature.slice(64, 128)
@@ -454,7 +616,7 @@ function App() {
   }
 
   const _getSchema = () => {
-    const schemaName_ = 'ERC721';
+    const schemaName_ = 'ERC1155';
     const schema = WyvernSchemas.schemas['main'].filter(
         (s) => s.name == schemaName_
     )[0];
@@ -479,13 +641,39 @@ function App() {
     feeMethod: 0,
     side: 0,
     saleKind: 0,
-    target: '0xe5964714d169eDf12B3C406768BE877EB87711f3',
+    target: '0x304c667F125056c2db5d1b25c6D030aE43E8a8b7',
     howToCall: 0,
     calldata: '0x',
     replacementPattern: '0x',
     staticTarget: '0x0000000000000000000000000000000000000000',
     staticExtradata: '0x',
     paymentToken: currentAddress,
+    basePrice: new BigNumber(0).toString(),
+    extra: 0,
+    listingTime: 0,
+    expirationTime: 0,
+    salt: new BigNumber(1).toString()
+  })
+
+  const makeOrderDetail = (exchange, isMaker, makerAddress, takerAddress, proxyAddressTarget) => ({
+    exchange: exchange,
+    maker: makerAddress,
+    taker: takerAddress,
+    makerRelayerFee: 0,
+    takerRelayerFee: 0,
+    makerProtocolFee: 0,
+    takerProtocolFee: 0,
+    feeRecipient: isMaker ? makerAddress : '0x0000000000000000000000000000000000000000',
+    feeMethod: 0,
+    side: 0,
+    saleKind: 0,
+    target: proxyAddressTarget,
+    howToCall: 0,
+    calldata: '0x',
+    replacementPattern: '0x',
+    staticTarget: '0x0000000000000000000000000000000000000000',
+    staticExtradata: '0x',
+    paymentToken: makerAddress,
     basePrice: new BigNumber(0).toString(),
     extra: 0,
     listingTime: 0,
@@ -610,6 +798,7 @@ function App() {
             <p>Owner: {creatureAccessoryFactory.owner}</p>
           </Col>
         </Row>
+        <Row><Button onClick={() => approveForFactory()}>Approve</Button></Row>
         <Row><Button onClick={() => mint1155To(0, currentAddress)}>Mint 3 common item</Button></Row>
         <Row><Button onClick={() => mint1155To(1, currentAddress)}>Mint 3 rare item</Button></Row>
         <Row><Button onClick={() => mint1155To(2, currentAddress)}>Mint 3 epic item</Button></Row>
@@ -653,6 +842,8 @@ function App() {
             <Button onClick={() => createOrder()}>Create order</Button>
             <Button onClick={() => createTwoOrderThatMatchAuto()}>Create Two Order That Match Auto</Button>
             <Button onClick={() => loadOrder()}>Load order</Button>
+            <Button onClick={() => createSellOrder1()}>Sell order1</Button>
+            <Button onClick={() => createBuyOrder2()}>Buy order2</Button>
           </Col>
         </Row>
         {ordersExchange && ordersExchange.map(e => (<Row key={e.hash}>
